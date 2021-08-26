@@ -1,55 +1,32 @@
 ---
 title: 'Prometheus Remote Write'
-excerpt: 'How to export metrics from k6 Cloud to a Prometheus server using Remote Write'
+excerpt: 'How to export metrics from k6 Cloud to a Prometheus instance using the Prometheus Remote Write integration'
 ---
+
+The Prometheus remote write integration allows to export metrics from k6 Cloud to a Prometheus instance: either self-hosted or provided by a vendor.
+
+With the Prometheus integration, you can: 
+
+- Store k6 metrics on your Prometheus instances.
+- Run PromQL queries on k6 metrics.
+- Correlate testing results with other systems monitored with Prometheus.
+
+
+We currently offer similar integrations with cloud APM solutions: [Azure Monitor](/cloud/integrations/cloud-apm/azure-monitor/), [DataDog](/cloud/integrations/cloud-apm/datadog/), [Grafana Cloud](/cloud/integrations/cloud-apm/grafana-cloud/), and [New Relic](/cloud/integrations/cloud-apm/new-relic/). If you use any of these solutions, we recommend starting to integrate your APM solution first.
+
+
+
+
+> ⭐️ Prometheus remote write and [APM](/cloud/integrations/cloud-apm/) integrations are available on Pro and Enterprise plans, as well as the annual Team plan and Trial.
 
 ## Configuration Parameters
 
-The configuration parameters for sending metrics to Prometheus are as follows:
+Currently, you can only enable this integration using the `apm` option in the k6 script.
 
-| Name                    | Description                                                                                                                                                                                                                                                                                   |
-| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `provider`              | Any APM provider name available in the [supported APM provider](/cloud/integrations/cloud-apm#supported-apm-providers)'s table.                                                                                                                                                               |
-| `remoteWriteURL`        | The `remoteWriteURL` provided by your Prometheus Remote Write provider or the URL of your own self-hosted Prometheus instance, for example: `http://monitoring.example.com:9090/api/v1/write`.                                                                                                |
-| `credentials`           | The `credentials` provided by your Prometheus Remote Write provider. Currently only bearer token and HTTP basic authentication mechanism are supported, as [listed](/cloud/integrations/cloud-apm/prometheus-remote-write#supported-authentication-mechanisms) below. This field is optional. |
-| `metrics`               | List of built-in and custom metrics to be exported. Metric names will be validated against the Prometheus [metric name conventions](https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels) and non-conforming metrics will be ignored.                                      |
-| `includeDefaultMetrics` | If set, the export will include the default metrics. Default is `true`.                                                                                                                                                                                                                       |
-| `resampleRate`          | The rate by which the metrics are resampled and sent to the APM provider in seconds. Default is 3 and acceptable values are integers between 1 and 10.                                                                                                                                        |
-| `includeTestRunId`      | If set, the `test_run_id` will be exported per each metric as an extra tag. Default is `false`.                                                                                                                                                                                               |
+The `apm` option configures how to export k6 Cloud metrics to the supported monitoring solutions. It allows multiple configuration blocks to export simultaneously to several monitoring agents.
 
-## Supported Authentication Mechanisms
+The parameters for sending metrics to a Prometheus Remote Write instance are as follows:
 
-Currently only bearer token and HTTP basic authentication mechanisms are supported. To configure your authentication mechanism, populate `credentials` with either of these configuration parameters:
-
-### HTTP basic authentication
-
-| Name       | Description                                |
-| ---------- | ------------------------------------------ |
-| `username` | The username in HTTP basic authentication. |
-| `password` | The password in HTTP basic authentication. |
-
-```javascript
-credentials: {
-  username: "<username>",
-  password: "<password>"
-}
-```
-
-### Bearer token authentication
-
-| Name    | Description                               |
-| ------- | ----------------------------------------- |
-| `token` | The bearer token without the prefix/type. |
-
-```javascript
-credentials: {
-  token: "<token>"
-}
-```
-
-## Example Configuration Object
-
-All the above configuration parameters are passed like this in your test run.
 
 ```javascript
 export let options = {
@@ -58,13 +35,15 @@ export let options = {
       apm: [
         {
           provider: "prometheus",
-          remoteWriteURL: "<Remote Write URL>", // This can include query-string parameters
+          remoteWriteURL: "<Remote Write URL>", 
+          // optional parameters
           credentials: {
-            token: "<token>" // Optional
+            token: "<token>"
           },
-          metrics: ["http_req_sending", "my_rate", "my_gauge", ...],
           includeDefaultMetrics: true,
-          includeTestRunId: false
+          metrics: ["my_rate", "my_gauge", "http_req_duration", ...],
+          includeTestRunId: false,
+          resampleRate: 3
         },
       ]
     },
@@ -73,4 +52,40 @@ export let options = {
 ```
 
 
+| Name                    | Description                                                                                                                                                                                                                                                                                   |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| provider<sup>(required)</sup>            | For this integration, the value must be `prometheus`.
+| remoteWriteURL<sup>(required)</sup>        | URL of the Prometheus remote write endpoint. <br/> For example: `http://monitoring.example.com:9090/api/v1/write`.                                                                                                |
+| credentials           | The `credentials` to authenticate with the Prometheus remote write instance. <br/> Read more on [supported authentication mechanisms](#supported-authentication-mechanisms). |
+| includeDefaultMetrics | Whether it exports all the [k6 built-in metrics](https://k6.io/docs/using-k6/metrics/). Default is `true`. |
+| metrics               | List of built-in and custom metrics to export. <br/> Metric names are validated against the [Prometheus metric name conventions](https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels), ignoring  non-conforming metrics.                                      |
+| includeTestRunId      | Whether all the exported metrics include a `test_run_id` tag whose value is the k6 Cloud test run id. Default is `false`. <br/> Be aware that enabling this setting might increase the cost of your APM provider. |
+| resampleRate          | The rate by which the metrics are resampled and sent to the APM provider in seconds. Default is 3 and acceptable values are integers between 1 and 10. |
 
+### Supported authentication mechanisms
+
+Currently, the integration only supports bearer token and HTTP basic authentication mechanisms. Set the `credentials` option to configure one of the supported authentication mechanisms as follows:
+
+#### HTTP basic authentication
+
+```javascript
+
+credentials: {
+  // The username in HTTP basic authentication
+  username: "<username>",
+  // The password in HTTP basic authentication
+  password: "<password>"
+}
+
+```
+
+#### Bearer token authentication
+
+```javascript
+
+credentials: {
+  // The bearer token without the prefix/type
+  token: "<token>"
+}
+
+```
